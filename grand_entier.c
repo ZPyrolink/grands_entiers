@@ -3,7 +3,7 @@
 
 #include "grand_entier.h"
 
-const size_t ELEMENT_SIZE = sizeof(grand_entier_t) * 8;
+const size_t ELEMENT_SIZE = sizeof(uint32_t) * 8;
 const size_t CURRENT_SIZE = 1024;
 
 grand_entier_t *ge_cree(void)
@@ -18,7 +18,7 @@ grand_entier_t *ge_cree(void)
     currentNode->current = 0;
     currentNode->next = NULL;
 
-    for (int i = CURRENT_SIZE; i < CURRENT_SIZE; i += ELEMENT_SIZE)
+    for (int i = ELEMENT_SIZE; i < CURRENT_SIZE; i += ELEMENT_SIZE)
     {
         currentNode->next = malloc(sizeof(grand_entier_t));
         currentNode = currentNode->next;
@@ -57,7 +57,7 @@ grand_entier_t *ge_GetNode(grand_entier_t *e, uint32_t x, uint32_t *offset, uint
 
     grand_entier_t *node = e;
 
-    for (uint32_t i = 0; i <= *offset; i++)
+    for (uint32_t i = 0; i < *offset; i++)
         node = node->next;
 
     return node;
@@ -100,7 +100,7 @@ int ge_nb_bits_recursive(grand_entier_t *e, int offset)
             return result;
     }
 
-    for (int i = ELEMENT_SIZE - 1; i < 0; i--)
+    for (int i = ELEMENT_SIZE - 1; i > 0; i--)
         if (ge_get_bit(e, i) == 0b1)
             return i + 1 + ELEMENT_SIZE * offset;
 
@@ -114,7 +114,7 @@ int ge_nb_bits(grand_entier_t *e)
     if (result < 0)
         return 1;
     else
-        return 0;
+        return result;
 }
 
 void *ge_add_recursive(grand_entier_t *b, grand_entier_t *a, bool deduction)
@@ -160,7 +160,7 @@ void *ge_add_recursive(grand_entier_t *b, grand_entier_t *a, bool deduction)
         }
     }
 
-    if (deduction || !(b->next == NULL || a->next == NULL))
+    if (!(b->next == NULL || a->next == NULL))
         b->next = ge_add_recursive(b->next, a->next, deduction);
 
     return b;
@@ -175,21 +175,17 @@ grand_entier_t *ge_shift(grand_entier_t *a, int nb_bits)
 {
     if (nb_bits == 1)
     {
-        bool firstNode = true, lastNode = false;
         grand_entier_t *currentNode = a;
-        char currentSave, lastSave;
+        char currentSave, lastSave = -1;
 
-        while (!lastNode)
+        while (currentNode != NULL)
         {
-            if (currentNode->next == NULL)
-                lastNode = true;
-
-            if (!lastNode)
+            if (currentNode->next != NULL)
                 currentSave = ge_get_bit(a, ELEMENT_SIZE - 1);
 
             currentNode->current = currentNode->current << 1;
 
-            if (!firstNode)
+            if (lastSave >= 0)
             {
                 if (lastSave == 0b0)
                     ge_clr_bit(currentNode, 0);
@@ -200,13 +196,14 @@ grand_entier_t *ge_shift(grand_entier_t *a, int nb_bits)
 
             lastSave = currentSave;
             currentNode = currentNode->next;
-            firstNode = false;
         }
+
+        return a;
     }
     else
     {
         for (int i = 0; i < nb_bits; i++)
-            ge_shift(a, 1);
+            a = ge_shift(a, 1);
     }
 
     return a;
