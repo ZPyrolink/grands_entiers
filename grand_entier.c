@@ -86,7 +86,10 @@ grand_entier_t *ge_clr_bit(grand_entier_t *e, uint32_t x)
 char ge_get_bit(grand_entier_t *e, uint32_t x)
 {
     uint32_t offset, rest;
-    grand_entier_t *nodeToGet = ge_GetNode(e, x, &offset, &rest, true);
+    grand_entier_t *nodeToGet = ge_GetNode(e, x, &offset, &rest, false);
+
+    if (nodeToGet == NULL)
+        return 0;
 
     return (nodeToGet->current >> rest) & 1;
 }
@@ -185,8 +188,7 @@ grand_entier_t *ge_shift(grand_entier_t *a, int nb_bits)
             if (currentNode->next == NULL)
                 lastNode = true;
 
-            if (!lastNode)
-                currentSave = ge_get_bit(a, ELEMENT_SIZE - 1);
+            currentSave = ge_get_bit(a, ELEMENT_SIZE - 1);
 
             currentNode->current = currentNode->current << 1;
 
@@ -197,6 +199,16 @@ grand_entier_t *ge_shift(grand_entier_t *a, int nb_bits)
 
                 if (lastSave == 0b1)
                     ge_set_bit(currentNode, 0);
+            }
+
+            if (lastNode && current == 0b1)
+            {
+                currentNode->next = ge_cree();
+                
+                if (currentNode->next == NULL)
+                    return NULL;
+
+                lastNode = false;
             }
 
             lastSave = currentSave;
