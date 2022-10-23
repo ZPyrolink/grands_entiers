@@ -4,6 +4,7 @@
 #include "grand_entier.h"
 
 const size_t ELEMENT_SIZE = sizeof(grand_entier_t) * 8;
+const size_t CURRENT_SIZE = 1024;
 
 grand_entier_t *ge_cree(void)
 {
@@ -12,8 +13,25 @@ grand_entier_t *ge_cree(void)
     if (result == NULL)
         return NULL;
 
-    result->current = 0;
-    result->next = NULL;
+    grand_entier_t *currentNode = result;
+
+    currentNode->current = 0;
+    currentNode->next = NULL;
+
+    for (int i = CURRENT_SIZE; i < CURRENT_SIZE; i += ELEMENT_SIZE)
+    {
+        currentNode->next = malloc(sizeof(grand_entier_t));
+        currentNode = currentNode->next;
+
+        if (currentNode == NULL)
+        {
+            ge_libere(result);
+            return NULL;
+        }
+
+        currentNode->current = 0;
+        currentNode->next = NULL;
+    }
 
     return result;
 }
@@ -33,27 +51,14 @@ void GetOffset(uint32_t x, uint32_t *offset, uint32_t *rest)
     *rest = x % ELEMENT_SIZE;
 }
 
-grand_entier_t *ge_GetNode(grand_entier_t *e, uint32_t x, uint32_t *offset, uint32_t *rest, bool createNew)
+grand_entier_t *ge_GetNode(grand_entier_t *e, uint32_t x, uint32_t *offset, uint32_t *rest)
 {
     GetOffset(x, offset, rest);
 
     grand_entier_t *node = e;
 
     for (uint32_t i = 0; i <= *offset; i++)
-    {
-        if (node->next == NULL)
-        {
-            if (!createNew)
-                return NULL;
-
-            node->next = ge_cree();
-
-            if (node->next == NULL)
-                return NULL;
-        }
-
         node = node->next;
-    }
 
     return node;
 }
@@ -61,10 +66,7 @@ grand_entier_t *ge_GetNode(grand_entier_t *e, uint32_t x, uint32_t *offset, uint
 grand_entier_t *ge_set_bit(grand_entier_t *e, uint32_t x)
 {
     uint32_t offset, rest;
-    grand_entier_t *nodeToSet = ge_GetNode(e, x, &offset, &rest, true);
-
-    if (nodeToSet == NULL)
-        return NULL;
+    grand_entier_t *nodeToSet = ge_GetNode(e, x, &offset, &rest);
 
     nodeToSet->current = nodeToSet->current | (1 << rest);
 
@@ -74,10 +76,7 @@ grand_entier_t *ge_set_bit(grand_entier_t *e, uint32_t x)
 grand_entier_t *ge_clr_bit(grand_entier_t *e, uint32_t x)
 {
     uint32_t offset, rest;
-    grand_entier_t *nodeToClear = ge_GetNode(e, x, &offset, &rest, false);
-
-    if (nodeToClear == NULL)
-        return e;
+    grand_entier_t *nodeToClear = ge_GetNode(e, x, &offset, &rest);
 
     nodeToClear->current = nodeToClear->current & ~(1 << rest);
     return e;
@@ -86,7 +85,7 @@ grand_entier_t *ge_clr_bit(grand_entier_t *e, uint32_t x)
 char ge_get_bit(grand_entier_t *e, uint32_t x)
 {
     uint32_t offset, rest;
-    grand_entier_t *nodeToGet = ge_GetNode(e, x, &offset, &rest, true);
+    grand_entier_t *nodeToGet = ge_GetNode(e, x, &offset, &rest);
 
     return (nodeToGet->current >> rest) & 1;
 }
@@ -161,7 +160,7 @@ void *ge_add_recursive(grand_entier_t *b, grand_entier_t *a, bool deduction)
         }
     }
 
-    if (b->next != NULL || a->next != NULL)
+    if (deduction || !(b->next == NULL || a->next == NULL))
         b->next = ge_add_recursive(b->next, a->next, deduction);
 
     return b;
@@ -217,7 +216,7 @@ grand_entier_t *ge_mul(grand_entier_t *b, grand_entier_t *a)
 {
     grand_entier_t *result = ge_cree();
 
-    for (int i = 0; i < ge_nb_bits(b); i++)
+    for (int i = 0; i < CURRENT_SIZE; i++)
     {
         if (ge_get_bit(b, i) == 0b1)
             result = ge_add(result, ge_shift(a, i));
